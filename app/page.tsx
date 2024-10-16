@@ -1,101 +1,99 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from 'react';
+import UrlForm from './components/UrlForm';
+import axios from 'axios';
+import { Download, X } from 'lucide-react';  // Import the download and close icons from Lucide
+import FileView from './components/FileView'; // Import the FileView component
+import { useDownload } from '@/contexts/DownloadContext'; // Import useDownload hook
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    const { downloads, addDownload } = useDownload(); // Access downloads and addDownload from context
+    const [chapters, setChapters] = useState<any[] | null>(null); // Track current chapters being downloaded
+    const [isModalOpen, setModalOpen] = useState(false); // Manage modal visibility
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    const handleUrlSubmit = async (data: { url: string; startChapter: number; endChapter: number }) => {
+        try {
+            // Make a POST request to the API, sending URL and chapter range
+            const response = await axios.post("/api/create-book", {
+                url: data.url,
+                startChapter: data.startChapter,
+                endChapter: data.endChapter,
+            });
+
+            // Set the downloaded chapters in state
+            setChapters(response.data.chapters);
+
+            // Add the chapters to the download context
+            addDownload(response.data.chapters);
+
+            // Close the modal after submission
+            setModalOpen(false);
+        } catch (error) {
+            console.error('Failed to download content:', error);
+        }
+    };
+
+    return (
+        <div className="flex flex-col w-full md:max-w-2xl mx-auto p-2 min-h-screen">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-base-content">File View</h1>
+                <button className="btn btn-primary flex items-center space-x-2" onClick={() => setModalOpen(true)}>
+                    <Download className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Show the downloaded chapters or a message */}
+            {chapters ? (
+                <FileView chapters={chapters} />
+            ) : (
+                <div className="text-center text-gray-600">
+                    <Download className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-xl text-base-content">No chapters downloaded yet.</p>
+                    <p className="text-gray-500 mt-2">Start by downloading chapters!</p>
+                </div>
+            )}
+
+            {/* Modal for URL form */}
+            {isModalOpen && (
+                <div className="modal modal-open">
+                    <div className="modal-box relative">
+                        <button
+                            className="absolute top-2 right-2 btn btn-sm btn-circle"
+                            onClick={() => setModalOpen(false)}
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <h3 className="font-bold text-lg mb-4">Scrape URL</h3>
+                        <UrlForm onSubmit={handleUrlSubmit} />
+                    </div>
+                </div>
+            )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    );
+}
+
+// Component to render previously downloaded chapters from context
+const DownloadedChaptersView = () => {
+    const { downloads } = useDownload();
+
+    if (downloads.length === 0) {
+        return (
+            <div className="text-center text-gray-600">
+                <Download className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-xl">No downloads available.</p>
+                <p className="text-gray-500 mt-2">Once you download chapters, they’ll appear here.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {downloads.map((download, index) => (
+                <div key={index} className="p-4 border rounded-md shadow-sm">
+                    <FileView chapters={download} />
+                </div>
+            ))}
+        </div>
+    );
 }
