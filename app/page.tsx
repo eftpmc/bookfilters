@@ -1,60 +1,109 @@
 "use client";
 
-import { useState } from 'react';
-import UrlForm from './components/UrlForm';
-import axios from 'axios';
-import { Download, X } from 'lucide-react';  // Import the download and close icons from Lucide
-import FileView from './components/FileView'; // Import the FileView component
-import { useDownload } from '@/contexts/DownloadContext'; // Import useDownload hook
+import { useEffect, useState } from 'react';
+import { Download, Search, Plus, X } from 'lucide-react'; // Import icons
+import Home from './components/Home';
+import { useCollection } from '@/contexts/CollectionContext';
 
-export default function Home() {
-    const { downloads, addDownload } = useDownload(); // Access downloads and addDownload from context
-    const [chapters, setChapters] = useState<any[] | null>(null); // Track current chapters being downloaded
-    const [isModalOpen, setModalOpen] = useState(false); // Manage modal visibility
+export default function Page() {
+    const { collections, addCollection } = useCollection(); // Get collections and addCollection
+    const [activeCollection, setActiveCollection] = useState(null); // State for active collection
+    const [isModalOpen, setModalOpen] = useState(false); // Modal state for creating a new collection
+    const [isUrlFormOpen, setUrlFormOpen] = useState(false); // State to control URL form modal
+    const [newCollectionName, setNewCollectionName] = useState(''); // State for new collection name
+    const [newContentType, setNewContentType] = useState<'text' | 'image'>('text'); // State for content type
 
-    const handleUrlSubmit = async (data: { url: string; startChapter: number; endChapter: number }) => {
-        try {
-            // Make a POST request to the API, sending URL and chapter range
-            const response = await axios.post("/api/create-book", {
-                url: data.url,
-                startChapter: data.startChapter,
-                endChapter: data.endChapter,
-            });
-
-            // Set the downloaded chapters in state
-            setChapters(response.data.chapters);
-
-            // Add the chapters to the download context
-            addDownload(response.data.chapters);
-
-            // Close the modal after submission
-            setModalOpen(false);
-        } catch (error) {
-            console.error('Failed to download content:', error);
+    useEffect(() => {
+        // Automatically select the first collection if available
+        if (collections.length > 0 && !activeCollection) {
+            setActiveCollection(collections[0]);
         }
+    }, [collections, activeCollection]);
+
+    // Handler for adding a new collection
+    const handleAddCollection = () => {
+        if (newCollectionName.trim() === '') {
+            alert('Collection name cannot be empty');
+            return;
+        }
+        // Ensure contentType defaults to 'text' if not set
+        const newCollection = { name: newCollectionName, contentType: newContentType || 'text', chapters: [] };
+        addCollection(newCollection.name, newCollection.chapters, newCollection.contentType); // Add collection with content type
+        setModalOpen(false); // Close modal after adding
+        setNewCollectionName(''); // Reset name input
+    };
+
+    const handleSetActiveCollection = (collection) => {
+        setActiveCollection(collection);
     };
 
     return (
-        <div className="flex flex-col w-full md:max-w-2xl mx-auto p-2 min-h-screen">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-base-content">File View</h1>
-                <button className="btn btn-primary flex items-center space-x-2" onClick={() => setModalOpen(true)}>
-                    <Download className="w-5 h-5" />
-                </button>
+        <div className="drawer drawer-start">
+            {/* Drawer checkbox to control open/close state */}
+            <input id="my-drawer" type="checkbox" className="drawer-toggle" />
+            <div className="drawer-content flex flex-col w-full mx-auto min-h-screen">
+                {/* Navbar */}
+                <div className="navbar bg-base-100">
+                    <div className="navbar-start">
+                        {/* Drawer toggle button */}
+                        <label htmlFor="my-drawer" className="btn btn-ghost btn-circle">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
+                            </svg>
+                        </label>
+                    </div>
+                    <div className="navbar-center">
+                        <a className="btn btn-ghost text-xl">filterbooks</a>
+                    </div>
+                    <div className="navbar-end">
+                        <button className="btn btn-ghost btn-circle">
+                            <Search className="w-5 h-5" />
+                        </button>
+                        <button className="btn btn-ghost btn-circle" onClick={() => setUrlFormOpen(true)}>
+                            <Download className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Main content */}
+                <Home
+                    activeCollection={activeCollection}
+                    setActiveCollection={setActiveCollection}
+                    setModalOpen={setModalOpen}
+                    isModalOpen={isModalOpen}
+                    isUrlFormOpen={isUrlFormOpen}  // Pass URL form modal state
+                    setUrlFormOpen={setUrlFormOpen}  // Control URL form modal from Home
+                />
             </div>
 
-            {/* Show the downloaded chapters or a message */}
-            {chapters ? (
-                <FileView chapters={chapters} />
-            ) : (
-                <div className="text-center text-gray-600">
-                    <Download className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-xl text-base-content">No chapters downloaded yet.</p>
-                    <p className="text-gray-500 mt-2">Start by downloading chapters!</p>
+            {/* Drawer content */}
+            <div className="drawer-side">
+                {/* Drawer overlay for closing when clicking outside */}
+                <label htmlFor="my-drawer" className="drawer-overlay"></label>
+                <div className="p-4 w-80 bg-base-300 text-base-content min-h-full">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-lg font-semibold">Collections</span>
+                        {/* Add button to create a new collection */}
+                        <button className="btn btn-ghost btn-circle" onClick={() => setModalOpen(true)}>
+                            <Plus className="w-5 h-5" />
+                        </button>
+                    </div>
+                    <ul>
+                        {collections.map((collection, index) => (
+                            <li key={index} className="mb-2">
+                                <a
+                                    className="text-base-content cursor-pointer hover:underline"
+                                    onClick={() => handleSetActiveCollection(collection)}
+                                >
+                                    {collection.name}
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
-            )}
+            </div>
 
-            {/* Modal for URL form */}
+            {/* Modal for adding a new collection */}
             {isModalOpen && (
                 <div className="modal modal-open">
                     <div className="modal-box relative">
@@ -64,36 +113,33 @@ export default function Home() {
                         >
                             <X className="w-5 h-5" />
                         </button>
-                        <h3 className="font-bold text-lg mb-4">Scrape URL</h3>
-                        <UrlForm onSubmit={handleUrlSubmit} />
+                        <h3 className="font-bold text-lg mb-4">Create New Collection</h3>
+                        <div className="flex flex-col space-y-4">
+                            <input
+                                type="text"
+                                placeholder="Collection Name"
+                                className="input input-bordered w-full"
+                                value={newCollectionName}
+                                onChange={(e) => setNewCollectionName(e.target.value)}
+                            />
+                            <select
+                                className="select select-bordered w-full"
+                                value={newContentType}
+                                onChange={(e) => setNewContentType(e.target.value as 'text' | 'image')}
+                            >
+                                <option value="text">Text</option>
+                                <option value="image">Image</option>
+                            </select>
+                            <button
+                                className="btn btn-primary w-full"
+                                onClick={handleAddCollection}
+                            >
+                                Add Collection
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
-        </div>
-    );
-}
-
-// Component to render previously downloaded chapters from context
-const DownloadedChaptersView = () => {
-    const { downloads } = useDownload();
-
-    if (downloads.length === 0) {
-        return (
-            <div className="text-center text-gray-600">
-                <Download className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-xl">No downloads available.</p>
-                <p className="text-gray-500 mt-2">Once you download chapters, they’ll appear here.</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {downloads.map((download, index) => (
-                <div key={index} className="p-4 border rounded-md shadow-sm">
-                    <FileView chapters={download} />
-                </div>
-            ))}
         </div>
     );
 }

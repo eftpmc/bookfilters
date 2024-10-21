@@ -3,6 +3,7 @@ import axios from 'axios';
 import { chunkHtmlContent } from '@/utils/helpers';
 import { analyzeSelectorsWithAI } from '@/utils/openai';
 import { scrapeAllPages } from '@/utils/scraper';
+import { Chapter } from '@/types';
 
 // Function to analyze the entire HTML page by chunking it and extracting CSS selectors
 async function analyzePageForSelectors(html: string) {
@@ -26,7 +27,7 @@ async function analyzePageForSelectors(html: string) {
 // Main POST route handler
 export async function POST(request: NextRequest) {
     try {
-        const { url, startChapter, endChapter } = await request.json();
+        const { url, startChapter, endChapter, contentType } = await request.json();
 
         if (!url || typeof startChapter !== 'number' || typeof endChapter !== 'number') {
             return NextResponse.json({ error: 'URL, starting chapter, and ending chapter are required' }, { status: 400 });
@@ -41,20 +42,20 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unable to locate book content on the page.' }, { status: 404 });
         }
 
-        const chapters = [];
+        const chapters: Chapter[] = [];
 
         // Callback to update progress on each chapter scrape
         const onChapterScraped = (chapterData, progress) => {
             console.log(`Progress: ${progress}%`);
-            // Here you could implement a mechanism to send progress back to the client (e.g., websockets or server-sent events)
             chapters.push(chapterData);
         };
 
-        // Scrape all pages
+        // Scrape all pages and gather chapters based on content type
         await scrapeAllPages(url, selectors, startChapter, endChapter, pageLimit, onChapterScraped);
 
+        // Return only the scraped chapters
         return NextResponse.json({
-            message: 'Book content scraped successfully',
+            message: 'Chapters scraped successfully',
             chapters,
         });
     } catch (error) {
